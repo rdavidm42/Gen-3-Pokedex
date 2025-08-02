@@ -58,6 +58,8 @@ def one_game_inclusive(one,others,dataframe):
     # return dummy[['No.','Caught?']+one].iloc[one_each]
     return dataframe[['No.','Caught?']+one].loc[indices]
 
+def save_changes(dictionary):
+    value = list(dictionary)
 def main():
     # Initialize variables
     if 'df' not in st.session_state:
@@ -90,93 +92,43 @@ def main():
     if uploaded_file is not None:
         try:
             st.session_state.df = pd.read_csv(uploaded_file,index_col="Pokemon")
-            
         except:
             st.write("No list of Pokemon!")
     #Load Dataframe
     if game and game_not and button == 'all of':
         if st.session_state.mode != 1:
-            st.session_state.df['Caught?'].loc[st.session_state.caught.index] = st.session_state.caught
+            st.session_state.df.loc[st.session_state.caught.index,'Caught?'] = st.session_state.caught
             st.session_state.mode = 1
-        st.text(f'Total Pokemon found: {len(one_game_exclusive(game,game_not,st.session_state.df))}')
-        editor = st.data_editor(
-            one_game_exclusive(game,game_not,st.session_state.df),
-            column_config = {
-                "Caught?":st.column_config.CheckboxColumn(
-                None,
-                help="Select which Pokemon you've already caught",
-                width = "small",
-                default=False,
-                )
-            },
-            disabled=('Pokemon','No.',*game,*game_not)
-        )
-        st.session_state.caught = editor['Caught?']
+        search_df = one_game_exclusive(game,game_not,st.session_state.df)
         
     elif game and game_not and button == 'at least one of':
         if st.session_state.mode != 2:
-            st.session_state.df['Caught?'].loc[st.session_state.caught.index] = st.session_state.caught
+            st.session_state.df.loc[st.session_state.caught.index,'Caught?'] = st.session_state.caught
             st.session_state.mode = 2
-        st.text(f'Total Pokemon found: {len(one_game_inclusive(game,game_not,st.session_state.df))}')
-        editor = st.data_editor(
-            one_game_inclusive(game,game_not,st.session_state.df),
-            column_config = {
-                "Caught?":st.column_config.CheckboxColumn(
-                None,
-                help="Select which Pokemon you've already caught",
-                width = "small",
-                default=False,
-                )
-            },
-            disabled=('Pokemon','No.',*game,*game_not)
-        )
-        st.session_state.caught = editor['Caught?']
+        search_df = one_game_inclusive(game,game_not,st.session_state.df)
         
     elif game and button == 'all of':
         if st.session_state.mode != 3:
-            st.session_state.df['Caught?'].loc[st.session_state.caught.index] = st.session_state.caught
+            st.session_state.df.loc[st.session_state.caught.index,'Caught?'] = st.session_state.caught
             st.session_state.mode = 3
-        st.text(f'Total Pokemon found: {len(get_intersection(game,st.session_state.df))}')
-        editor = st.data_editor(
-            get_intersection(game,st.session_state.df),
-            column_config = {
-                    "Caught?":st.column_config.CheckboxColumn(
-                    None,
-                    help="Select which Pokemon you've already caught",
-                    width = "small",
-                    default=False,
-                )
-            },
-            disabled=('Pokemon','No.',*game)
-           )
-        st.session_state.caught = editor['Caught?']
+        search_df = get_intersection(game,st.session_state.df)
         
     elif game and button == 'at least one of':
         if st.session_state.mode != 4:
-            st.session_state.df['Caught?'].loc[st.session_state.caught.index] = st.session_state.caught
+            st.session_state.df.loc[st.session_state.caught.index,'Caught?'] = st.session_state.caught
             st.session_state.mode = 4
-        st.text(f'Total Pokemon found: {len(find_game(game,st.session_state.df))}')
-        editor = st.data_editor(
-            find_game(game,st.session_state.df),
-            column_config = {
-                "Caught?":st.column_config.CheckboxColumn(
-                None,
-                help="Select which Pokemon you've already caught",
-                width = "small",
-                default=False,
-            )
-        },
-        disabled=('Pokemon','No.',*game)
-       )
-        st.session_state.caught = editor['Caught?']
+        search_df = find_game(game,st.session_state.df)
         
     else:
         # st.write(st.session_state)
         if st.session_state.mode != 0:
-            st.session_state.df['Caught?'].loc[st.session_state.caught.index] = st.session_state.caught
+            st.session_state.df.loc[st.session_state.caught.index,'Caught?'] = st.session_state.caught
             st.session_state.mode = 0
-        editor = st.data_editor(
-            st.session_state.df,
+        search_df = st.session_state.df
+    st.text(f'Total Pokemon found: {len(search_df)}')
+    editor = st.data_editor(
+            search_df,
+            key = 'changes',
             column_config = {
                     "Caught?":st.column_config.CheckboxColumn(
                     None,
@@ -187,7 +139,9 @@ def main():
             },
             disabled=('Pokemon','No.',*games_list)
            )
-        st.session_state.caught = editor['Caught?']
-        
+    st.session_state.caught = pd.Series(
+        [x['Caught?'] for x in list(st.session_state['changes']["edited_rows"].values())],
+        index=editor.index[list(st.session_state['changes']["edited_rows"].keys())])
+    
 if __name__ == "__main__":
     main()
